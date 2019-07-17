@@ -1,0 +1,36 @@
+
+
+cc_library_shared {
+    relative_install_path: "hw",
+    srcs: ["odroidThings.cpp"],
+
+    include_dirs: [
+        "hardware/libhardware/include",
+        "system/core/libcutils/include",
+        "system/core/libutils/include",
+        "system/core/libsystem/include",
+        "vendor/hardkernel/external/wiringPi",
+    ],
+
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libwiringPi",
+    ],
+
+    header_libs: ["wiringPi-headers"],
+
+    name: "odroidThings",
+    cflags: [
+        "-DLOG_TAG=\"odroidThings\"",
+        "-Wno-unused-parameter",
+    ],
+
+    // ANDROIDMK TRANSLATION ERROR: unsupported conditional
+    // ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 && echo OK),OK)
+
+    proprietary: true,
+    // ANDROIDMK TRANSLATION ERROR: endif from unsupported contitional
+    // endif
+
+}
