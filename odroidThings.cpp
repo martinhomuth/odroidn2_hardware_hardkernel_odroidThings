@@ -1,123 +1,70 @@
+/*
+ *    Copyright (c) 2019 Sangchul Go <luke.go@hardkernel.com>
+ *
+ *    OdroidThings is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU Lesser General Public License as
+ *    published by the Free Software Foundation, either version 3 of the
+ *    License, or (at your option) any later version.
+ *
+ *    OdroidThings is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Lesser General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Lesser General Public
+ *    License along with OdroidThings.
+ *    If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <hardware/hardware.h>
-#include <odroidThings.h>
-#include <wiringPi/wiringPi.h>
+#include <hardware/odroidThings.h>
 
 #include <cutils/log.h>
 #include <utils/Mutex.h>
-#include <cutils/properties.h>
 
-#include <errno.h>
 #include <string>
+#include <vector>
 #include <memory>
-
-#define BOARD_PROPERTY "ro.product.device"
+#include "PinManager.h"
 
 static android::Mutex thingsLock;
-
-// pin array number is based on physical pin number
-static const pin_t n2_pin_support_list[PIN_MAX] = {
-    {"3.3V", -1}, {"5V", -1},
-    {"P03", 8}, {"5V", -1},
-    {"P05", 9}, {"GND", -1},
-    {"P06", 7}, {"P08", 15},
-    {"GND", -1}, {"P10", 16},
-    {"P11", 0}, {"P12", 1},
-    {"P13", 2}, {"GND", -1},
-    {"P15", 3}, {"P16", 4},
-    {"3.3V", -1}, {"P18", 5},
-    {"P19", 12}, {"GND", -1},
-    {"P21", 13}, {"P22", 6},
-    {"P23", 14}, {"P24", 10},
-    {"P25", -1}, {"P26", 11},
-    {"P27", 30}, {"P28", 31},
-    {"P29", 21}, {"GND", -1},
-    {"P31", 22}, {"P32", 26},
-    {"P33", 23}, {"GND", -1},
-    {"P35", 24}, {"P36", 27},
-    {"AIN0", 25}, {"1.8V", 28},
-    {"GND", -1}, {"AIN1", 29},
-};
-
-static pin_mode n2_current_mode[PIN_MAX] {
-    PIN_PWR, PIN_PWR,
-    PIN_I2C_SDA, PIN_PWR,
-    PIN_I2C_SCL, PIN_GND,
-    PIN_GPIO, PIN_UART_TX,
-    PIN_GND, PIN_UART_RX,
-    PIN_GPIO, PIN_GPIO,
-    PIN_GPIO, PIN_GND,
-    PIN_GPIO, PIN_GPIO,
-    PIN_PWR, PIN_GPIO,
-    PIN_GPIO, PIN_GND,
-    PIN_GPIO, PIN_GPIO,
-    PIN_GPIO, PIN_GPIO,
-    PIN_GND, PIN_GPIO,
-    PIN_I2C_SDA, PIN_I2C_SCL,
-    PIN_GPIO, PIN_GND,
-    PIN_GPIO, PIN_GPIO,
-    PIN_ETC, PIN_GND,
-    PIN_ETC, PIN_GPIO,
-    PIN_AIN, PIN_PWR,
-    PIN_GND, PIN_AIN
-};
-
-class PinManager {
-    private:
-        std::string board;
-        pin_t *pinList;
-        pin_mode *currentMode;
-
-    public:
-        PinManager();
-        void init();
-        std::vector<pin_t> getGpioList();
-        int getValue();
-};
-
 static std::unique_ptr<PinManager> gPinManager;
 
-PinManager::PinManager(){
-    char boardName[PROPERTY_VALUE_MAX];
-
-    property_get(BOARD_PROPERTY, boardName, NULL);
-    board = boardName;
-}
-
-void PinManager::init() {
-    if (board == "odroidn2") {
-        pinList = (pin_t*)n2_pin_support_list;
-        currentMode = n2_current_mode;
-    }
-}
-
-std::vector<pin_t> PinManager::getGpioList() {
-    std::vector<pin_t> gpioList;
-
-    for (int i = 0; i < PIN_MAX; i++) {
-        if (currentMode[i] == PIN_GPIO) {
-            gpioList.push_back(pinList[i]);
-        }
-    }
-    return gpioList;
-}
-
-int PinManager::getValue() {
-    return 0;
-}
-
 static void things_init() {
-    wiringPiSetupGpio();
-
     gPinManager = std::make_unique<PinManager>();
     gPinManager->init();
 }
 
-static const std::vector<pin_t> things_getGpioList() {
-    return gPinManager->getGpioList();
+static const std::vector<pin_t> things_getPinList() {
+    return gPinManager->getPinList();
 }
 
-static int things_getValue() {
-    return gPinManager->getValue();
+static bool things_getValue(int pin) {
+    return gPinManager->getValue(pin);
+}
+
+static void things_setDirection(int pin, int direction) {
+    return gPinManager->setDirection(pin, direction);
+}
+
+static void things_setValue(int pin, bool value) {
+    return gPinManager->setValue(pin, value);
+}
+
+static void things_setActiveType(int pin, int activeType) {
+    gPinManager->setActiveType(pin, activeType);
+}
+
+static void things_setEdgeTriggerType(int pin, int edgeTriggerType) {
+    gPinManager->setEdgeTriggerType(pin, edgeTriggerType);
+}
+
+static void things_registerCallback(int pin, function_t callback) {
+    gPinManager->registerCallback(pin, callback);
+}
+
+static void things_unregisterCallback(int pin) {
+    gPinManager->unregisterCallback(pin);
 }
 
 static int things_close(struct hw_device_t *dev) {
@@ -137,6 +84,7 @@ static int things_open(const hw_module_t *module, const char __unused *id,
 
     things_device_t *dev = (things_device_t*)malloc(sizeof(things_device_t));
 
+    ALOGD("things HAL open");
     if (!dev) {
         ALOGE("no memory for the odroid things device");
         return -ENOMEM;
@@ -149,8 +97,13 @@ static int things_open(const hw_module_t *module, const char __unused *id,
     dev->common.module = const_cast<hw_module_t*>(module);
     dev->common.close = things_close;
 
-    dev->gpio_ops.getGpioList = things_getGpioList;
     dev->gpio_ops.getValue = things_getValue;
+    dev->gpio_ops.setDirection = things_setDirection;
+    dev->gpio_ops.setValue = things_setValue;
+    dev->gpio_ops.setActiveType = things_setActiveType;
+    dev->gpio_ops.setEdgeTriggerType = things_setEdgeTriggerType;
+    dev->gpio_ops.registerCallback = things_registerCallback;
+    dev->gpio_ops.unregisterCallback = things_unregisterCallback;
     //dev->spi_ops.
 
     *device = &dev->common;
@@ -165,14 +118,13 @@ static struct hw_module_methods_t things_module_methods = {
 things_module_t HAL_MODULE_INFO_SYM = {
     .common = {
         .tag = HARDWARE_MODULE_TAG,
-        .version_major = 1,
-        .version_minor = 0,
+        .hal_api_version = HARDWARE_HAL_API_VERSION,
         .id = ODROID_THINGS_HARDWARE_MODULE_ID,
         .name = " Odroid things module",
         .author = "Hardkernel",
         .methods = &things_module_methods,
-        .dso = NULL,
         .reserved ={0},
     },
     .init = things_init,
+    .getPinList = things_getPinList,
 };
