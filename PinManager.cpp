@@ -3,6 +3,7 @@
 #include <hardware/odroidThings.h>
 #include <string>
 #include <vector>
+#include <cutils/log.h>
 
 #include "PinManager.h"
 
@@ -35,6 +36,8 @@ PinManager::PinManager(){
 
     property_get(BOARD_PROPERTY, boardName, NULL);
     board = boardName;
+
+    ALOGD("Board is %s", board.c_str());
 }
 
 void PinManager::init() {
