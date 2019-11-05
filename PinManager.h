@@ -22,20 +22,39 @@
 #include <hardware/odroidThings.h>
 #include <wiringPi/wiringPi.h>
 #include <vector>
+#include <map>
+#include <fstream>
 
 #define BOARD_PROPERTY "ro.product.device"
+
+using hardware::hardkernel::odroidthings::pin_t;
+using hardware::hardkernel::odroidthings::function_t;
+
+struct pwmState{
+    unsigned int period;
+    double cycle_rate;
+
+    uint8_t chip;
+    uint8_t node;
+    std::string periodPath;
+    std::string dutyCyclePath;
+    std::string enablePath;
+    std::string unexportPath;
+};
 
 class PinManager {
     private:
         std::string board;
         pin_t *pinList;
         int triggerType[PIN_MAX] = {INT_EDGE_SETUP,};
+        std::map<int, pwmState *> pwm;
 
-        enum Direction {
-            DIRECTION_IN,
-            DIRECTION_OUT_INITIALLY_HIGH,
-            DIRECTION_OUT_INITIALLY_LOW,
-        };
+        void initPwm();
+
+        // helper function
+        void initPwmState(int idx, uint8_t chip, uint8_t node);
+        void writeSysfsTo(std::string path, std::string value);
+
         enum ActiveType {
             ACTIVE_LOW,
             ACTIVE_HIGH,
@@ -50,13 +69,26 @@ class PinManager {
         PinManager();
         void init();
         std::vector<pin_t> getPinList();
+
+        // common
+        std::vector<std::string> getPinNameList();
+        std::vector<std::string> getListOf(int);
+
+        // gpio
         bool getValue(int);
-        void setDirection(int, int);
+        void setDirection(int, direction_t);
         void setValue(int, bool);
         void setActiveType(int, int);
         void setEdgeTriggerType(int, int);
         void registerCallback(int, function_t);
         void unregisterCallback(int);
+
+        // pwm
+        void openPwm(int);
+        void closePwm(int);
+        bool setPwmEnable(int, bool);
+        bool setPwmDutyCycle(int, double);
+        bool setPwmFrequency(int, double);
 };
 
 #endif /* PIN_MANAGER_H */

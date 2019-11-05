@@ -41,6 +41,7 @@ cc_library_shared {
     header_libs: ["wiringPi-headers"],
 
     name: "odroidThings",
+    vendor: true,
     cflags: [
         "-DLOG_TAG=\"odroidThings\"",
         "-Wno-unused-parameter",

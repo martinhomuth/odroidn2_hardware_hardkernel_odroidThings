@@ -27,6 +27,9 @@
 #include <memory>
 #include "PinManager.h"
 
+using hardware::hardkernel::odroidthings::things_device_t;
+using hardware::hardkernel::odroidthings::things_module_t;
+
 static android::Mutex thingsLock;
 static std::unique_ptr<PinManager> gPinManager;
 
@@ -39,11 +42,19 @@ static const std::vector<pin_t> things_getPinList() {
     return gPinManager->getPinList();
 }
 
+static const std::vector<std::string> things_getPinNameList() {
+    return gPinManager->getPinNameList();
+}
+
+static const std::vector<std::string> things_getListOf(int mode) {
+    return gPinManager->getListOf(mode);
+}
+
 static bool things_getValue(int pin) {
     return gPinManager->getValue(pin);
 }
 
-static void things_setDirection(int pin, int direction) {
+static void things_setDirection(int pin, direction_t direction) {
     return gPinManager->setDirection(pin, direction);
 }
 
@@ -78,6 +89,26 @@ static int things_close(struct hw_device_t *dev) {
     return 0;
 }
 
+static void things_pwm_open(int pin) {
+    gPinManager->openPwm(pin);
+}
+
+static void things_pwm_close(int pin) {
+    gPinManager->closePwm(pin);
+}
+
+static bool things_pwm_setEnable(int pin, bool enabled) {
+    return gPinManager->setPwmEnable(pin, enabled);
+}
+
+static bool things_pwm_setDutyCycle(int pin, double cycle_rate) {
+    return gPinManager->setPwmDutyCycle(pin, cycle_rate);
+}
+
+static bool things_pwm_setFrequency(int pin, double frequency_hz) {
+    return gPinManager->setPwmFrequency(pin, frequency_hz);
+}
+
 static int things_open(const hw_module_t *module, const char __unused *id,
         struct hw_device_t **device) {
     android::Mutex::Autolock lock(thingsLock);
@@ -97,6 +128,9 @@ static int things_open(const hw_module_t *module, const char __unused *id,
     dev->common.module = const_cast<hw_module_t*>(module);
     dev->common.close = things_close;
 
+    dev->common_ops.getPinNameList = things_getPinNameList;
+    dev->common_ops.getListOf = things_getListOf;
+
     dev->gpio_ops.getValue = things_getValue;
     dev->gpio_ops.setDirection = things_setDirection;
     dev->gpio_ops.setValue = things_setValue;
@@ -104,6 +138,12 @@ static int things_open(const hw_module_t *module, const char __unused *id,
     dev->gpio_ops.setEdgeTriggerType = things_setEdgeTriggerType;
     dev->gpio_ops.registerCallback = things_registerCallback;
     dev->gpio_ops.unregisterCallback = things_unregisterCallback;
+
+    dev->pwm_ops.open = things_pwm_open;
+    dev->pwm_ops.close = things_pwm_close;
+    dev->pwm_ops.setEnable = things_pwm_setEnable;
+    dev->pwm_ops.setDutyCycle = things_pwm_setDutyCycle;
+    dev->pwm_ops.setFrequency = things_pwm_setFrequency;
     //dev->spi_ops.
 
     *device = &dev->common;
@@ -118,6 +158,7 @@ static struct hw_module_methods_t things_module_methods = {
 things_module_t HAL_MODULE_INFO_SYM = {
     .common = {
         .tag = HARDWARE_MODULE_TAG,
+        .module_api_version = ODROID_THINGS_MODULE_API_VERSION_1_0,
         .hal_api_version = HARDWARE_HAL_API_VERSION,
         .id = ODROID_THINGS_HARDWARE_MODULE_ID,
         .name = " Odroid things module",
