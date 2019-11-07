@@ -3,7 +3,6 @@
 #include <hardware/odroidThings.h>
 #include <hardware/odroidthings-base.h>
 
-#include <string>
 #include <sstream>
 #include <vector>
 #include <map>
@@ -62,16 +61,16 @@ std::vector<pin_t> PinManager::getPinList() {
     return list;
 }
 
-std::vector<std::string> PinManager::getPinNameList() {
-    std::vector<std::string> list;
+std::vector<string> PinManager::getPinNameList() {
+    std::vector<string> list;
 
     for (int i=0; i<PIN_MAX; i++)
         list.push_back(pinList[i].name);
     return list;
 }
 
-std::vector<std::string> PinManager::getListOf(int mode) {
-    std::vector<std::string> list;
+std::vector<string> PinManager::getListOf(int mode) {
+    std::vector<string> list;
     for (int i=0; i<PIN_MAX; i++) {
         switch (mode) {
             case PIN_GPIO:
@@ -196,17 +195,17 @@ void PinManager::initPwmState(int idx, uint8_t chip, uint8_t node) {
 
     pwmRoot << "/sys/class/pwm/pwmchip" << std::to_string(state->chip)
         << "/pwm" << std::to_string(state->node) <<"/";
-    std::string pwmRootStr = pwmRoot.str();
+    string pwmRootStr = pwmRoot.str();
 
     state->periodPath =  pwmRootStr + "period";
     state->dutyCyclePath = pwmRootStr + "duty_cycle";
     state->enablePath = pwmRootStr + "enable";
 }
 
-inline void writeSysfsTo(std::string path, std::string value) {
+inline void PinManager::writeSysfsTo(const string path, const string value) {
     std::ofstream file(path);
-    path << value;
-    path.close();
+    file << value;
+    file.close();
 }
 
 void PinManager::openPwm(int idx) {
@@ -218,11 +217,10 @@ void PinManager::openPwm(int idx) {
 
     openPath << "/sys/class/pwm/pwmchip" << std::to_string(state->chip) << "/";
 
-    writeSysfsTo(openPath.str() + "export", to_string(state->node));
+    writeSysfsTo(openPath.str() + "export", std::to_string(state->node));
 
     state->unexportPath = openPath.str() + "unexport";
-
-    openPath <<"pwm" << std::to_string(state->node) <<"/";
+    openPath << "pwm" << std::to_string(state->node) << "/";
     writeSysfsTo(openPath.str() + "polarity", "normal");
 }
 
@@ -244,7 +242,7 @@ bool PinManager::setPwmEnable(int idx, bool enabled) {
     auto pin = pinList[idx].pin;
     const auto state = pwm.find(pin)->second;
 
-    writeSysfsTo(state->enablePath, (enable?"1":"0"));
+    writeSysfsTo(state->enablePath, (enabled?"1":"0"));
     return true;
 }
 

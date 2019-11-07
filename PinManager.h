@@ -24,11 +24,13 @@
 #include <vector>
 #include <map>
 #include <fstream>
+#include <string>
 
 #define BOARD_PROPERTY "ro.product.device"
 
 using hardware::hardkernel::odroidthings::pin_t;
 using hardware::hardkernel::odroidthings::function_t;
+using std::string;
 
 struct pwmState{
     unsigned int period;
@@ -44,7 +46,7 @@ struct pwmState{
 
 class PinManager {
     private:
-        std::string board;
+        string board;
         pin_t *pinList;
         int triggerType[PIN_MAX] = {INT_EDGE_SETUP,};
         std::map<int, pwmState *> pwm;
@@ -53,7 +55,7 @@ class PinManager {
 
         // helper function
         void initPwmState(int idx, uint8_t chip, uint8_t node);
-        void writeSysfsTo(std::string path, std::string value);
+        void writeSysfsTo(const string path, const string value);
 
         enum ActiveType {
             ACTIVE_LOW,
@@ -71,8 +73,8 @@ class PinManager {
         std::vector<pin_t> getPinList();
 
         // common
-        std::vector<std::string> getPinNameList();
-        std::vector<std::string> getListOf(int);
+        std::vector<string> getPinNameList();
+        std::vector<string> getListOf(int);
 
         // gpio
         bool getValue(int);
