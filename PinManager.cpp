@@ -13,6 +13,7 @@
 
 // pin array number is based on physical pin number
 static const pin_t n2_pin_support_list[PIN_MAX] = {
+    {"", -1, 0},
     {"3.3V", -1, PIN_PWR}, {"5V", -1, PIN_PWR},
     {"3", 8, PIN_I2C_SDA}, {"5V", -1, PIN_PWR},
     {"5", 9, PIN_I2C_SCL}, {"GND", -1, PIN_GND},
