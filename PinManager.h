@@ -29,6 +29,7 @@
 #define BOARD_PROPERTY "ro.product.device"
 
 using hardware::hardkernel::odroidthings::pin_t;
+using hardware::hardkernel::odroidthings::i2c_t;
 using hardware::hardkernel::odroidthings::function_t;
 using std::string;
 
@@ -48,8 +49,10 @@ class PinManager {
     private:
         string board;
         pin_t *pinList;
+        i2c_t *i2cList;
         int triggerType[PIN_MAX] = {INT_EDGE_SETUP,};
         std::map<int, pwmState *> pwm;
+        std::map<int, int> i2c;
 
         void initPwm();
 
@@ -91,6 +94,12 @@ class PinManager {
         bool setPwmEnable(int, bool);
         bool setPwmDutyCycle(int, double);
         bool setPwmFrequency(int, double);
+
+        // i2c
+        void openI2c(int, uint32_t, int);
+        void closeI2c(int);
+        std::vector<uint8_t> readRegBufferI2c(int, uint32_t, int);
+        Result writeRegBufferI2c(int, uint32_t, std::vector<uint8_t>, int);
 };
 
 #endif /* PIN_MANAGER_H */

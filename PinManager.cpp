@@ -15,10 +15,10 @@
 static const pin_t n2_pin_support_list[PIN_MAX] = {
     {"", -1, 0},
     {"3.3V", -1, PIN_PWR}, {"5V", -1, PIN_PWR},
-    {"3", 8, PIN_I2C_SDA}, {"5V", -1, PIN_PWR},
-    {"5", 9, PIN_I2C_SCL}, {"GND", -1, PIN_GND},
-    {"7", 7, PIN_GPIO}, {"8", 15, PIN_UART_TX},
-    {"GND", -1, PIN_GND}, {"10", 16, PIN_UART_RX},
+    {"3", 8, PIN_I2C}, {"5V", -1, PIN_PWR},
+    {"5", 9, PIN_I2C}, {"GND", -1, PIN_GND},
+    {"7", 7, PIN_GPIO}, {"8", 15, PIN_UART},
+    {"GND", -1, PIN_GND}, {"10", 16, PIN_UART},
     {"11", 0, PIN_GPIO}, {"12", 1, PIN_GPIO|PIN_PWM},
     {"13", 2, PIN_GPIO}, {"GND", -1, PIN_GND},
     {"15", 3, PIN_GPIO|PIN_PWM}, {"16", 4, PIN_GPIO},
@@ -27,13 +27,18 @@ static const pin_t n2_pin_support_list[PIN_MAX] = {
     {"21", 13, PIN_GPIO}, {"22", 6, PIN_GPIO},
     {"23", 14, PIN_GPIO}, {"24", 10, PIN_GPIO},
     {"25", -1, PIN_GND}, {"26", 11, PIN_GPIO},
-    {"27", 30, PIN_I2C_SDA}, {"28", 31, PIN_I2C_SCL},
+    {"27", 30, PIN_I2C}, {"28", 31, PIN_I2C},
     {"29", 21, PIN_GPIO}, {"GND", -1, PIN_GND},
     {"31", 22, PIN_GPIO}, {"32", 26, PIN_GPIO},
     {"33", 23, PIN_GPIO|PIN_PWM}, {"GND", -1, PIN_GND},
     {"35", 24, PIN_GPIO|PIN_PWM}, {"36", 27, PIN_GPIO},
     {"AIN0", 25, PIN_AIN}, {"1.8V", 28, PIN_PWR},
     {"GND", -1, PIN_GND}, {"AIN1", 29, PIN_AIN},
+};
+
+static const i2c_t n2_i2c_support_list[I2C_MAX] = {
+    {"I2C-2", "/dev/i2c-2"},
+    {"I2C-3", "/dev/i2c-3"},
 };
 
 PinManager::PinManager(){
@@ -50,6 +55,7 @@ void PinManager::init() {
 
     if (board == "odroidn2") {
         pinList = (pin_t*)n2_pin_support_list;
+        i2cList = (i2c_t*)n2_i2c_support_list;
     }
     initPwm();
 }
@@ -72,19 +78,20 @@ std::vector<string> PinManager::getPinNameList() {
 
 std::vector<string> PinManager::getListOf(int mode) {
     std::vector<string> list;
-    for (int i=0; i<PIN_MAX; i++) {
-        switch (mode) {
-            case PIN_GPIO:
+    switch (mode) {
+        case PIN_GPIO:
+            for (int i=0; i<PIN_MAX; i++) {
                 if (pinList[i].availableModes & PIN_GPIO) {
                     int alt = getAlt(pinList[i].pin);
                     if (alt < 2)
                         list.push_back(pinList[i].name);
                 }
-                break;
-            case PIN_PWM:
+            }
+            break;
+        case PIN_PWM:
+            for (int i=0; i<PIN_MAX; i++) {
                 if (pinList[i].availableModes & PIN_PWM) {
                     int alt = getAlt(pinList[i].pin);
-                    ALOGD("Board alt num is -  %d", alt);
 
                     if (alt < 2) {
                         list.push_back(pinList[i].name);
@@ -94,8 +101,12 @@ std::vector<string> PinManager::getListOf(int mode) {
                     else if ((pinList[i].pin > 22) && (alt == 5))
                         list.push_back(pinList[i].name);
                 }
-                break;
-        }
+            }
+            break;
+        case PIN_I2C:
+            for (int i=0; i<I2C_MAX; i++)
+                list.push_back(i2cList[i].name);
+            break;
     }
     return list;
 }
@@ -273,4 +284,51 @@ bool PinManager::setPwmFrequency(int idx, double frequency_hz) {
     }
 
     return true;
+}
+
+#include <unistd.h>
+#include <linux/i2c-dev.h>
+
+void PinManager::openI2c(int nameIdx, uint32_t address, int idx) {
+    int i2cFd = open(i2cList[nameIdx].path.c_str(), O_RDWR);
+    if (i2cFd < 0) {
+        ALOGD("oepn i2c is failed!");
+        return;
+    }
+    if (ioctl(i2cFd, I2C_SLAVE, address) < 0) {
+        ALOGD("Failed to acquire bus access and/or talk to salve.\n");
+        return;
+    }
+    i2c.insert(std::make_pair(idx, i2cFd));
+}
+
+void PinManager::closeI2c(int idx) {
+    const auto i2cfd = i2c.find(idx)->second;
+    close(i2cfd);
+    i2c.erase(idx);
+}
+
+std::vector<uint8_t> PinManager::readRegBufferI2c(int idx, uint32_t reg, int length) {
+    const auto i2cfd = i2c.find(idx)->second;
+
+    uint8_t *buffer = new uint8_t[length];
+    write(i2cfd, &reg, 1);
+    read(i2cfd, buffer, length);
+    std::vector<uint8_t> result(buffer, buffer + length);
+    delete[] buffer;
+
+    return result;
+}
+
+Result PinManager::writeRegBufferI2c(int idx, uint32_t reg, std::vector<uint8_t> buffer, int length) {
+    const auto i2cfd = i2c.find(idx)->second;
+    uint8_t *msg = new uint8_t[length+1];
+
+    msg[0] = reg;
+    std::copy(buffer.begin(), buffer.end(), msg+1);
+
+    write(i2cfd, msg, length+1);
+    delete[] msg;
+
+    return Result::OK;
 }

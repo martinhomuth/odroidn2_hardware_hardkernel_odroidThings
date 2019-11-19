@@ -109,6 +109,22 @@ static bool things_pwm_setFrequency(int pin, double frequency_hz) {
     return gPinManager->setPwmFrequency(pin, frequency_hz);
 }
 
+static void things_i2c_open(int nameIdx, uint32_t address, int idx) {
+    gPinManager->openI2c(nameIdx, address, idx);
+}
+
+static void things_i2c_close(int idx) {
+    gPinManager->closeI2c(idx);
+}
+
+static const std::vector<uint8_t> things_i2c_readRegBuffer(int idx, uint32_t reg, int length) {
+    return gPinManager->readRegBufferI2c(idx, reg, length);
+}
+
+static Result things_i2c_writeRegBuffer(int idx, uint32_t reg, std::vector<uint8_t> buffer, int length) {
+    return gPinManager->writeRegBufferI2c(idx, reg, buffer, length);
+}
+
 static int things_open(const hw_module_t *module, const char __unused *id,
         struct hw_device_t **device) {
     android::Mutex::Autolock lock(thingsLock);
@@ -144,6 +160,11 @@ static int things_open(const hw_module_t *module, const char __unused *id,
     dev->pwm_ops.setEnable = things_pwm_setEnable;
     dev->pwm_ops.setDutyCycle = things_pwm_setDutyCycle;
     dev->pwm_ops.setFrequency = things_pwm_setFrequency;
+
+    dev->i2c_ops.open = things_i2c_open;
+    dev->i2c_ops.close = things_i2c_close;
+    dev->i2c_ops.readRegBuffer = things_i2c_readRegBuffer;
+    dev->i2c_ops.writeRegBuffer = things_i2c_writeRegBuffer;
     //dev->spi_ops.
 
     *device = &dev->common;
