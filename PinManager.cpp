@@ -53,7 +53,7 @@ PinManager::PinManager(){
 void PinManager::init() {
     wiringPiSetup();
 
-    if (board == "odroidn2") {
+    if (board == "homie") {
         pinList = (pin_t*)n2_pin_support_list;
         i2cList = (i2c_t*)n2_i2c_support_list;
     }
@@ -184,7 +184,7 @@ void PinManager::initPwm() {
             pwm.insert(std::make_pair(pinList[i].pin, new pwmState()));
     }
 
-    if (board == "odroidn2") {
+    if (board == "homie") {
         // #12
         initPwmState(1, 8, 0);
         // #15
